@@ -30,6 +30,9 @@ inputs:
     description: 'Tag post. Useful for two posts from same action'
     required: false
     default: 'None'
+  fail_ci_if_error:
+    description: 'Specify whether or not CI build should fail if upload fails'
+    required: false
 
 runs:
   using: 'node12'

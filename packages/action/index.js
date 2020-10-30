@@ -19,7 +19,9 @@ const {resolve} = require('url');
 /**
  * main
  */
-async function main () {
+async function main() {
+  failCI = core.getInput('fail_ci_if_error').toLowerCase();
+  failCI = ['yes', 'true'].includes(failCI);
   try {
     // `who-to-greet` input defined in action metadata file
     if (!core.getInput('repo-token') || !core.getInput('os') || !core.getInput('file-path') || !core.getInput('repo-token')) {
@@ -40,14 +42,14 @@ async function main () {
         os: core.getInput('os'),
         tag: core.getInput('tag'),
         matrix: JSON.parse(core.getInput('matrix')),
-        ref: process.env.GITHUB_REF
+        ref: process.env.GITHUB_REF,
       },
       buildId: process.env.GITHUB_RUN_ID,
       sha: process.env.GITHUB_SHA,
       name: process.env.GITHUB_REPOSITORY.substr(1 + process.env.GITHUB_REPOSITORY.indexOf('/')),
       description: core.getInput('repo-description'),
       buildmessage: buildmessageStr,
-      token: core.getInput('repo-token')
+      token: core.getInput('repo-token'),
     };
 
     metaData.environment.matrix = JSON.stringify(metaData.environment.matrix, Object.keys(metaData.environment.matrix).sort()); // consistancy
@@ -63,14 +65,14 @@ async function main () {
       throw 'Could not find File';
     }
     const data = fs.readFileSync(
-      core.getInput('file-path'), 'utf8');
-    const sendMe = { type: fileType, data: data, metadata: metaData };
+        core.getInput('file-path'), 'utf8');
+    const sendMe = {type: fileType, data: data, metadata: metaData};
     const endpoint = resolve(core.getInput('endpoint'), '/api/build/gh/v1');
     console.log('Beginning Upload of data...');
     const outcome = await fetch(endpoint, {
       method: 'POST',
       body: JSON.stringify(sendMe),
-      headers: { 'Content-Type': 'application/json' }
+      headers: {'Content-Type': 'application/json'},
     });
     const outcomeText = await outcome.text();
     const outcomeAsJSON = JSON.parse(outcomeText);
@@ -81,15 +83,19 @@ async function main () {
       throw 'Upload Failed';
     } else if (outcomeAsJSON.message) {
       console.log('Build Uploaded Successfully!');
-      console.log('Visit ' + resolve(resolve(core.getInput('endpoint'),'/org/'), process.env.GITHUB_REPOSITORY) + ' to see uploaded data');
+      console.log('Visit ' + resolve(resolve(core.getInput('endpoint'), '/org/'), process.env.GITHUB_REPOSITORY) + ' to see uploaded data');
     } else {
       core.warning('Encountered unknown error, possibly involving server issues');
-      throw 'Unkown Error';
+      throw 'Unknown Error';
     }
   } catch (error) {
-    core.warning(error);
-    process.exitCode = 1;
-    core.setFailed(error.message);
+    if (failCI) {
+      process.exitCode = 1;
+      core.setFailed(error.message);
+    } else {
+      console.log(error);
+      core.warning(error);
+    }
   }
 }
 
